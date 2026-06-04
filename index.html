@@ -350,51 +350,39 @@ function playAudio() {
   }
 
   if (q.audio_file) {
-    // 用 fetch + Blob URL 播放，绕过 CDN 的 Content-Type 问题
+    // 腾讯云域名下，音频从 GitHub Pages 加载（避免 CDN 返回错误的 Content-Type）
+    var audioUrl = q.audio_file;
+    if (location.hostname === 'daanjutingxie.oyenglish.com.cn') {
+      audioUrl = 'https://raysu672-glitch.github.io/daanjutingxie/' + q.audio_file;
+    }
+    var audio = new Audio(audioUrl);
+    currentAudio = audio;
     var fallbackDone = false;
     var fallbackToTTS = function() {
       if (fallbackDone) return;
       fallbackDone = true;
       playBtn.classList.remove('speaking');
       playBtn.innerHTML = '&#9654;';
-      try { currentAudio && currentAudio.pause(); } catch(e) {}
+      try { audio.pause(); } catch(e) {}
       currentAudio = null;
       useTTS(q.original);
     };
-    fetch(q.audio_file)
-      .then(function(res) {
-        if (!res.ok) { fallbackToTTS(); return; }
-        return res.blob();
-      })
-      .then(function(blob) {
-        if (!blob || fallbackDone) return;
-        var blobUrl = URL.createObjectURL(blob);
-        var audio = new Audio(blobUrl);
-        currentAudio = audio;
-        audio.onplay = function() {
-          playBtn.classList.add('speaking');
-          playBtn.innerHTML = '&#9724;';
-        };
-        audio.onended = function() {
-          playBtn.classList.remove('speaking');
-          playBtn.innerHTML = '&#9654;';
-          currentAudio = null;
-          URL.revokeObjectURL(blobUrl);
-        };
-        audio.onerror = function() {
-          URL.revokeObjectURL(blobUrl);
-          fallbackToTTS();
-        };
-        var playPromise = audio.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(function() {
-            fallbackToTTS();
-          });
-        }
-      })
-      .catch(function() {
-        fallbackToTTS();
-      });
+    audio.onplay = function() {
+      playBtn.classList.add('speaking');
+      playBtn.innerHTML = '&#9724;';
+    };
+    audio.onended = function() {
+      playBtn.classList.remove('speaking');
+      playBtn.innerHTML = '&#9654;';
+      currentAudio = null;
+    };
+    audio.onerror = function() {
+      fallbackToTTS();
+    };
+    var playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(function() { fallbackToTTS(); });
+    }
   } else {
     useTTS(q.original);
   }

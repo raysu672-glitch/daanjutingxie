@@ -351,46 +351,37 @@ function playAudio() {
 
   if (q.audio_file) {
     // 优先播本地 MP3
-    var audio = new Audio();
-    audio.preload = 'metadata';
+    var audio = new Audio(q.audio_file);
     currentAudio = audio;
-    var loadTimer = null;
     var fallbackDone = false;
-    var cleanup = function() {
-      if (loadTimer) { clearTimeout(loadTimer); loadTimer = null; }
-    };
     var fallbackToTTS = function() {
       if (fallbackDone) return;
       fallbackDone = true;
-      cleanup();
       playBtn.classList.remove('speaking');
       playBtn.innerHTML = '&#9654;';
       try { audio.pause(); } catch(e) {}
       currentAudio = null;
       useTTS(q.original);
     };
-    // 先等 canplaythrough，确认浏览器能正确加载
-    audio.addEventListener('canplaythrough', function() {
-      cleanup();
-      if (fallbackDone) return;
+    audio.onplay = function() {
       playBtn.classList.add('speaking');
       playBtn.innerHTML = '&#9724;';
-      audio.play().catch(function() { fallbackToTTS(); });
-    }, {once: true});
-    audio.addEventListener('ended', function() {
+    };
+    audio.onended = function() {
       playBtn.classList.remove('speaking');
       playBtn.innerHTML = '&#9654;';
       currentAudio = null;
-    }, {once: true});
-    audio.addEventListener('error', function() {
+    };
+    audio.onerror = function() {
       fallbackToTTS();
-    }, {once: true});
-    // 5 秒超时：Edge 有时挂住不报错也不触发 canplay → 直接降级
-    loadTimer = setTimeout(function() {
-      fallbackToTTS();
-    }, 5000);
-    audio.src = q.audio_file;
-    audio.load();
+    };
+    // 直接播放，不等待 canplaythrough（CDN 可能不触发此事件）
+    var playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(function() {
+        fallbackToTTS();
+      });
+    }
   } else {
     useTTS(q.original);
   }

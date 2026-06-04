@@ -352,7 +352,17 @@ function playAudio() {
   if (q.audio_file) {
     // 优先播本地 MP3
     const audio = new Audio(q.audio_file);
+    audio.preload = 'auto';
     currentAudio = audio;
+    var fallbackDone = false;
+    var fallbackToTTS = function() {
+      if (fallbackDone) return;
+      fallbackDone = true;
+      playBtn.classList.remove('speaking');
+      playBtn.innerHTML = '&#9654;';
+      currentAudio = null;
+      useTTS(q.original);
+    };
     audio.onplay = function() {
       playBtn.classList.add('speaking');
       playBtn.innerHTML = '&#9724;';
@@ -363,15 +373,11 @@ function playAudio() {
       currentAudio = null;
     };
     audio.onerror = function() {
-      // 音频加载失败，只重置按钮，不自动降级 TTS（避免双播）
-      playBtn.classList.remove('speaking');
-      playBtn.innerHTML = '&#9654;';
-      currentAudio = null;
+      // MP3 加载失败 → 降级 TTS（用标志防双播）
+      fallbackToTTS();
     };
-    audio.load();
     audio.play().catch(function() {
-      // 只有 play() 真正失败时才降级 TTS
-      useTTS(q.original);
+      fallbackToTTS();
     });
   } else {
     useTTS(q.original);

@@ -363,13 +363,14 @@ function playAudio() {
       currentAudio = null;
     };
     audio.onerror = function() {
-      // 降级到 TTS
+      // 音频加载失败，只重置按钮，不自动降级 TTS（避免双播）
       playBtn.classList.remove('speaking');
       playBtn.innerHTML = '&#9654;';
       currentAudio = null;
-      useTTS(q.original);
     };
+    audio.load();
     audio.play().catch(function() {
+      // 只有 play() 真正失败时才降级 TTS
       useTTS(q.original);
     });
   } else {

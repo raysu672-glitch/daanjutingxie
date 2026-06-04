@@ -351,34 +351,46 @@ function playAudio() {
 
   if (q.audio_file) {
     // 优先播本地 MP3
-    const audio = new Audio(q.audio_file);
-    audio.preload = 'auto';
+    var audio = new Audio();
+    audio.preload = 'metadata';
     currentAudio = audio;
+    var loadTimer = null;
     var fallbackDone = false;
+    var cleanup = function() {
+      if (loadTimer) { clearTimeout(loadTimer); loadTimer = null; }
+    };
     var fallbackToTTS = function() {
       if (fallbackDone) return;
       fallbackDone = true;
+      cleanup();
       playBtn.classList.remove('speaking');
       playBtn.innerHTML = '&#9654;';
+      try { audio.pause(); } catch(e) {}
       currentAudio = null;
       useTTS(q.original);
     };
-    audio.onplay = function() {
+    // 先等 canplaythrough，确认浏览器能正确加载
+    audio.addEventListener('canplaythrough', function() {
+      cleanup();
+      if (fallbackDone) return;
       playBtn.classList.add('speaking');
       playBtn.innerHTML = '&#9724;';
-    };
-    audio.onended = function() {
+      audio.play().catch(function() { fallbackToTTS(); });
+    }, {once: true});
+    audio.addEventListener('ended', function() {
       playBtn.classList.remove('speaking');
       playBtn.innerHTML = '&#9654;';
       currentAudio = null;
-    };
-    audio.onerror = function() {
-      // MP3 加载失败 → 降级 TTS（用标志防双播）
+    }, {once: true});
+    audio.addEventListener('error', function() {
       fallbackToTTS();
-    };
-    audio.play().catch(function() {
+    }, {once: true});
+    // 5 秒超时：Edge 有时挂住不报错也不触发 canplay → 直接降级
+    loadTimer = setTimeout(function() {
       fallbackToTTS();
-    });
+    }, 5000);
+    audio.src = q.audio_file;
+    audio.load();
   } else {
     useTTS(q.original);
   }

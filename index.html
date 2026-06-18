@@ -100,6 +100,15 @@
   .audio-hint { font-size: 0.8rem; color: #9a8a7a; }
   .audio-hint strong { color: #c07a30; font-size: 0.85rem; display: block; margin-bottom: 2px; }
 
+  .original-text {
+    margin-top: 12px; padding: 10px 14px;
+    background: #fff8ee; border: 1.5px solid #e8a44a;
+    border-radius: 8px; font-size: 0.85rem; color: #7a6a5a;
+    display: none; line-height: 1.6;
+  }
+  .original-text.show { display: block; }
+  .original-text .label { font-weight: 600; color: #c07a30; margin-bottom: 4px; }
+
   .para-label {
     font-size: 0.75rem; color: #9a8a7a; font-weight: 600;
     letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px;
@@ -218,6 +227,10 @@
         选出下方改写句中空格处对应的替换词
       </div>
     </div>
+    <div class="original-text" id="originalText">
+      <div class="label">原文</div>
+      <span id="originalContent"></span>
+    </div>
     <div class="para-label">改写表达</div>
     <div class="para-text" id="paraText"></div>
   </div>
@@ -246,6 +259,7 @@ let currentGroup = 0;
 let currentQ = 0;
 let score = 0;
 let answered = false;
+let playCount = 0;
 const synth = window.speechSynthesis;
 let groupScores = JSON.parse(localStorage.getItem('ieltsListenScores') || '{}');
 const LETTERS = ['A','B','C','D'];
@@ -289,6 +303,7 @@ function startGroup(groupIdx) {
 
 function loadQuestion() {
   answered = false;
+  playCount = 0;
   synth.cancel();
   if (currentAudio) {
     currentAudio.pause();
@@ -305,6 +320,9 @@ function loadQuestion() {
   const playBtn = document.getElementById('playBtn');
   playBtn.classList.remove('speaking');
   playBtn.innerHTML = '&#9654;';
+
+  document.getElementById('originalText').classList.remove('show');
+  document.getElementById('originalContent').textContent = '';
 
   const paraEl = document.getElementById('paraText');
   const blankHtml = q.blank.replace('______',
@@ -347,6 +365,13 @@ function playAudio() {
     playBtn.classList.remove('speaking');
     playBtn.innerHTML = '&#9654;';
     return;
+  }
+
+  // 增加播放次数，达到第4次时显示原文
+  playCount++;
+  if (playCount >= 4) {
+    document.getElementById('originalText').classList.add('show');
+    document.getElementById('originalContent').textContent = q.original;
   }
 
   if (q.audio_file) {
